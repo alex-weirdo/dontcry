@@ -10,9 +10,8 @@ A pixel-art game about two cyclists overcoming the hardships of the road.
 
 ## Gameplay
 
-- **Space** — jump (the boy and the girl take turns jumping).
+- **Space** — jump
 - Catch the flying food to feed the cyclists.
-- **Two hunger bars**: the boy's on the right, the girl's on the left.
 - **Careful**: the girl doesn't eat meat!
 
 ## Day and night
