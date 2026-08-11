@@ -1,0 +1,22 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #2a3560 0%, #141b38 70%, #0b1024 100%);
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow:
+    0 0 0 4px #10152e,
+    0 0 0 5px #3d4f9e,
+    0 0 40px rgba(90, 150, 255, 0.35);
+}
