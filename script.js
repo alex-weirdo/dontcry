@@ -92,6 +92,79 @@ const MID = [
 ];
 const MID_MAP = { G: '#47b14e', g: '#2f8f3e', B: '#8a5a2b' };
 
+const BUSH = [
+  '.GYYGGG..',
+  'GGGGGGGG.',
+  'gGGGGGGg.',
+  'ggGGGGgg.'
+];
+const BUSH_MAP = { G: '#4fc757', Y: '#8ff27a', g: '#35a044' };
+const BUSH_MAP_N = { G: '#245c2c', Y: '#3f6a46', g: '#1a4526' };
+
+const FOOD = {
+  burger: {
+    rows: [
+      '..BBBBB..',
+      '.BBBBBBB.',
+      '.gMMMMMg.',
+      '..gGGGg..',
+      '..BBBBB..'
+    ],
+    map: { B: '#e8a33d', g: '#8a4f1f', M: '#7a4a20', G: '#4fc757' }
+  },
+  fries: {
+    rows: [
+      '...YYYY..',
+      '..YYYYY..',
+      '..YYYYY..',
+      '...RRRR..',
+      '...RRRR..',
+      '...RRRR..',
+      '...RWRW..',
+      '...RWWW..'
+    ],
+    map: { Y: '#ffd43b', R: '#e83f3f', W: '#ffffff' }
+  },
+  sandwich: {
+    rows: [
+      '..GGGG...',
+      '.GGGGGG..',
+      '.YYYYYY..',
+      '.rrrrrr..',
+      '.BBBBBB..',
+      '.BBBBBB..'
+    ],
+    map: { G: '#4fc757', Y: '#ffd43b', r: '#f28ba8', B: '#e8a33d' }
+  },
+  soda: {
+    rows: [
+      '....S....',
+      '...SSS...',
+      '....S....',
+      '..RRRR...',
+      '..RRRR...',
+      '.RRRRRR..',
+      '.RWRWRW..'
+    ],
+    map: { S: '#5bc8f5', R: '#e83f3f', W: '#ffffff' }
+  }
+};
+
+function spawnFood() {
+  const names = Object.keys(FOOD);
+  const name = names[Math.floor(Math.random() * names.length)];
+  const f = FOOD[name];
+  foods.push({
+    name,
+    rows: f.rows,
+    map: f.map,
+    x: W + 20,
+    baseY: 84 + Math.random() * 28,
+    phase: Math.random() * 6.28,
+    r: 9
+  });
+}
+
 const FRONT = [
   '....G......',
   '...GGG.....',
@@ -142,6 +215,25 @@ function drawCone(x0, y0, x1, yTop, yBot, alpha) {
   ctx.fill();
 }
 
+function mix(hex1, hex2, t) {
+  const r1 = parseInt(hex1.slice(1, 3), 16);
+  const g1 = parseInt(hex1.slice(3, 5), 16);
+  const b1 = parseInt(hex1.slice(5, 7), 16);
+  const r2 = parseInt(hex2.slice(1, 3), 16);
+  const g2 = parseInt(hex2.slice(3, 5), 16);
+  const b2 = parseInt(hex2.slice(5, 7), 16);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+function blendMap(dayMap, nightMap, t) {
+  const out = {};
+  for (const k in dayMap) out[k] = mix(dayMap[k], nightMap[k], t);
+  return out;
+}
+
 function makeLayer(speed, scale, baseY, rows, map, gapMin, gapMax) {
   const trees = [];
   let x = -60 + Math.random() * 80;
@@ -165,8 +257,8 @@ function updateTrees(layer, dt) {
 }
 
 const back = makeLayer(16, 2, 152, BACK, BACK_MAP, 36, 80);
-const mid = makeLayer(36, 3, 176, MID, MID_MAP, 60, 120);
-const front = makeLayer(80, 4, 210, FRONT, FRONT_MAP, 90, 170);
+const mid = makeLayer(36, 3, 176, FRONT, FRONT_MAP, 60, 120);
+const front = makeLayer(80, 3, 210, BUSH, BUSH_MAP, 70, 120);
 
 const speckles = [];
 for (let i = 0; i < 46; i++) {
@@ -190,7 +282,7 @@ const clouds = [];
 
 const dust = [];
 
-const BX = 158, BY = 195, R = 9, CY = 190, FY = 195;
+const BX = 200, BY = 195, R = 9, CY = 190, FY = 195;
 const SY = 168, HY = 171, GY = 164, PY = 170, QY = 158, HDY = 146;
 
 const boyOpts = {
@@ -206,7 +298,7 @@ const girlOpts = {
   frame: '#e8edf2', hub: '#e8edf2', jersey: '#ff6bb5',
   legFar: '#d94a9a', legNear: '#ff6bb5', skin: '#ffe2d0',
   saddle: '#ff8ac4', grip: '#e8edf2', hair: '#ffd65e',
-  glasses: true, hairFlow: true, hairFlutter: 0,
+  glasses: true, hairFlow: true, hairFlutter: 0, cry: false,
   shadowFade: () => Math.max(0, 1 - girlJumpH / 150),
   shadowW: () => Math.max(6, 18 * (1 - girlJumpH / 160))
 };
@@ -320,6 +412,13 @@ function drawCyclist(x, angle, yb, o) {
     ctx.fillRect(hdx + 3, hdy + 1, 1, 1);
   }
 
+  if (o.cry) {
+    ctx.fillStyle = '#7a3a3a';
+    ctx.fillRect(hdx + 1, hdy + 4, 3, 1);
+    ctx.fillRect(hdx, hdy + 5, 1, 1);
+    ctx.fillRect(hdx + 4, hdy + 5, 1, 1);
+  }
+
   if (lights) {
     const lx = hx + 2, ly = hy + 2;
     pCircle(lx, ly, 3, 'rgba(255,247,192,0.35)');
@@ -329,68 +428,70 @@ function drawCyclist(x, angle, yb, o) {
 }
 
 function drawScene() {
-  if (night) {
-    ctx.fillStyle = '#0d1636';
-    ctx.fillRect(0, 0, W, 56);
-    ctx.fillStyle = '#111c44';
-    ctx.fillRect(0, 56, W, 44);
-    ctx.fillStyle = '#162252';
-    ctx.fillRect(0, 100, W, 52);
-    for (const st of stars) {
-      const a = 0.3 + 0.4 * Math.abs(Math.sin(twinkleT * 2 + st.p));
-      ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
-      ctx.fillRect(st.x, st.y, 1, 1);
-    }
-    pCircle(336, 38, 11, 'rgba(242,236,216,0.15)');
-    pCircle(336, 38, 7, '#f2ecd8');
-    pCircle(334, 36, 2, '#d8d2b8');
-    pCircle(339, 40, 2, '#d8d2b8');
-  } else {
-    ctx.fillStyle = '#59c4ff';
-    ctx.fillRect(0, 0, W, 56);
-    ctx.fillStyle = '#79d4ff';
-    ctx.fillRect(0, 56, W, 44);
-    ctx.fillStyle = '#a3e3ff';
-    ctx.fillRect(0, 100, W, 52);
-    pCircle(40, 38, 12, 'rgba(255,223,77,0.3)');
-    pCircle(40, 38, 8, '#ffdf3d');
-    pCircle(40, 38, 4, '#fff7ae');
+  const t = nightness;
+
+  ctx.fillStyle = mix('#59c4ff', '#0d1636', t);
+  ctx.fillRect(0, 0, W, 56);
+  ctx.fillStyle = mix('#79d4ff', '#111c44', t);
+  ctx.fillRect(0, 56, W, 44);
+  ctx.fillStyle = mix('#a3e3ff', '#162252', t);
+  ctx.fillRect(0, 100, W, 52);
+
+  const sa = 1 - t;
+  if (sa > 0.02) {
+    pCircle(40, 38, 12, 'rgba(255,223,77,' + (0.3 * sa).toFixed(3) + ')');
+    pCircle(40, 38, 8, 'rgba(255,223,77,' + sa.toFixed(3) + ')');
+    pCircle(40, 38, 4, 'rgba(255,247,174,' + sa.toFixed(3) + ')');
+  }
+  if (t > 0.02) {
+    pCircle(336, 38, 11, 'rgba(242,236,216,' + (0.15 * t).toFixed(3) + ')');
+    pCircle(336, 38, 7, 'rgba(242,236,216,' + t.toFixed(3) + ')');
+    pCircle(334, 36, 2, 'rgba(216,210,184,' + t.toFixed(3) + ')');
+    pCircle(339, 40, 2, 'rgba(216,210,184,' + t.toFixed(3) + ')');
+  }
+  for (const st of stars) {
+    const a = (0.3 + 0.4 * Math.abs(Math.sin(twinkleT * 2 + st.p))) * t;
+    ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
+    ctx.fillRect(st.x, st.y, 1, 1);
   }
 
-  for (const c of clouds) drawSprite(CLOUD, night ? CLOUD_MAP_N : CLOUD_MAP, c.x, c.y, c.s);
+  const cloudMap = blendMap(CLOUD_MAP, CLOUD_MAP_N, t);
+  for (const c of clouds) drawSprite(CLOUD, cloudMap, c.x, c.y, c.s);
 
-  const hillFar = night ? '#1c3a26' : '#4faf55';
-  const hillNear = night ? '#152e1e' : '#3f9f49';
+  const hillFar = mix('#4faf55', '#1c3a26', t);
+  const hillNear = mix('#3f9f49', '#152e1e', t);
   pCircle(40, 150, 66, hillFar);
   pCircle(190, 150, 80, hillFar);
   pCircle(320, 152, 60, hillFar);
   pCircle(120, 158, 54, hillNear);
   pCircle(260, 156, 60, hillNear);
 
-  const bMap = night ? BACK_MAP_N : back.map;
-  for (const t of back.trees) drawSprite(back.rows, bMap, t.x, back.baseY, back.scale * t.v);
+  const bMap = blendMap(back.map, BACK_MAP_N, t);
+  for (const b of back.trees) drawSprite(back.rows, bMap, b.x, back.baseY, back.scale * b.v);
 
-  ctx.fillStyle = night ? '#1d4a26' : '#3fae49';
+  ctx.fillStyle = mix('#3fae49', '#1d4a26', t);
   ctx.fillRect(0, 152, W, 26);
   for (const s of speckles) {
-    ctx.fillStyle = night ? s.n : s.c;
+    ctx.fillStyle = mix(s.c, s.n, t);
     ctx.fillRect(Math.round(s.x), Math.round(s.y), s.s, s.s);
   }
 
-  const mMid = night ? MID_MAP_N : mid.map;
-  for (const t of mid.trees) drawSprite(mid.rows, mMid, t.x, mid.baseY, mid.scale * t.v);
+  const mMid = blendMap(mid.map, FRONT_MAP_N, t);
+  for (const m of mid.trees) drawSprite(mid.rows, mMid, m.x, mid.baseY, mid.scale * m.v);
 
-  ctx.fillStyle = night ? '#23262c' : '#575b63';
+  ctx.fillStyle = mix('#575b63', '#23262c', t);
   ctx.fillRect(0, 178, W, 30);
-  ctx.fillStyle = night ? '#2e3138' : '#6d737c';
+  ctx.fillStyle = mix('#6d737c', '#2e3138', t);
   ctx.fillRect(0, 178, W, 2);
 
   const o = scroll % 28;
-  ctx.fillStyle = night ? '#8a8d66' : '#ffe14d';
+  ctx.fillStyle = mix('#ffe14d', '#8a8d66', t);
   for (let x = -o; x < W; x += 28) ctx.fillRect(Math.round(x), 193, 10, 3);
 
-  ctx.fillStyle = night ? '#0e3318' : '#2f8f3e';
+  ctx.fillStyle = mix('#2f8f3e', '#0e3318', t);
   ctx.fillRect(0, 208, W, 8);
+
+  drawPuddle(BX - girlOff + 25, 202, puddle);
 
   const boyYb = Math.sin(wheelA * 2) - jumpH;
   const girlYb = Math.sin(girlWheelA * 2) - girlJumpH;
@@ -412,8 +513,111 @@ function drawScene() {
   ctx.fillStyle = 'rgba(130,130,140,0.55)';
   for (const d of dust) ctx.fillRect(Math.round(d.x), Math.round(d.y), 2, 2);
 
-  const fMap = night ? FRONT_MAP_N : front.map;
-  for (const t of front.trees) drawSprite(front.rows, fMap, t.x, front.baseY, front.scale * t.v);
+  const fMap = blendMap(front.map, BUSH_MAP_N, t);
+  for (const b of front.trees) drawSprite(front.rows, fMap, b.x, front.baseY, front.scale * b.v);
+
+  for (const f of foods) {
+    drawSprite(f.rows, f.map, f.x, f.y + f.rows.length, 2);
+  }
+
+  for (const t of tears) {
+    ctx.fillStyle = '#8ccbff';
+    ctx.fillRect(Math.round(t.x), Math.round(t.y), 1, 2);
+  }
+
+  for (const s of sparks) {
+    ctx.fillStyle = s.c;
+    ctx.fillRect(Math.round(s.x), Math.round(s.y), 2, 2);
+  }
+
+  drawMsg();
+  drawHungerBar();
+}
+
+function drawMsg() {
+  if (!msg) return;
+  const x = Math.round(msg.x);
+  const y = Math.round(msg.y + Math.sin(gameT * 5));
+  const w = msg.text.length * 5 + 10;
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.fillRect(x - w / 2, y - 8, w, 16);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - w / 2, y - 8, w, 16);
+  ctx.beginPath();
+  ctx.moveTo(x - 3, y + 8);
+  ctx.lineTo(x + 3, y + 8);
+  ctx.lineTo(x, y + 14);
+  ctx.closePath();
+  ctx.fillStyle = '#333';
+  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.fillText(msg.text, x, y + 1);
+}
+
+function drawPuddle(x, y, size) {
+  if (size < 0.05) return;
+  const rx = Math.max(4, size * 26);
+  const ry = Math.max(2, size * 5);
+  const rows = Math.floor(ry);
+  for (let r = 0; r <= rows; r++) {
+    const t = r / rows;
+    const half = Math.max(1, Math.round(rx * Math.sqrt(1 - t * t)));
+    const a = 0.35 + 0.3 * (1 - t);
+    ctx.fillStyle = 'rgba(100,170,240,' + a.toFixed(2) + ')';
+    ctx.fillRect(x - half, y - r, half * 2, 1);
+    if (r > 0) ctx.fillRect(x - half, y + r, half * 2, 1);
+  }
+  ctx.fillStyle = 'rgba(180,225,255,0.5)';
+  ctx.fillRect(x - 2, y - 1, 4, 1);
+}
+
+function drawBar(x, y, bw, bh, value, icon) {
+  ctx.fillStyle = '#0b0f1e';
+  ctx.fillRect(x - 2, y - 2, bw + 4, bh + 4);
+  ctx.fillStyle = '#2a2f3d';
+  ctx.fillRect(x, y, bw, bh);
+
+  const fill = Math.max(0, value) / 100;
+  const fw = Math.round(bw * fill);
+  ctx.fillStyle = value > 50 ? '#4cd964' : value > 25 ? '#ffcc00' : '#ff5b4d';
+  ctx.fillRect(x, y, fw, bh);
+  if (fw > 2) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(x + 1, y + 1, fw - 2, 2);
+  }
+
+  const ax = x - 12, ay = y + bh / 2 - 3;
+  if (icon === 'apple') {
+    ctx.fillStyle = '#3fae49';
+    ctx.fillRect(ax + 2, ay - 2, 2, 2);
+    ctx.fillStyle = '#7a5a2b';
+    ctx.fillRect(ax + 3, ay, 1, 2);
+    ctx.fillStyle = '#e8302f';
+    ctx.fillRect(ax, ay + 1, 5, 2);
+    ctx.fillRect(ax, ay + 2, 1, 1);
+    ctx.fillRect(ax + 4, ay + 2, 1, 1);
+    ctx.fillRect(ax + 1, ay + 3, 3, 2);
+  } else if (icon === 'berry') {
+    ctx.fillStyle = '#3fae49';
+    ctx.fillRect(ax + 1, ay - 2, 4, 2);
+    ctx.fillRect(ax + 2, ay - 1, 2, 1);
+    ctx.fillStyle = '#ff5b8f';
+    ctx.fillRect(ax, ay + 1, 5, 3);
+    ctx.fillRect(ax + 1, ay + 4, 3, 1);
+    ctx.fillStyle = '#ffd65e';
+    ctx.fillRect(ax + 1, ay + 2, 1, 1);
+    ctx.fillRect(ax + 3, ay + 2, 1, 1);
+  }
+}
+
+function drawHungerBar() {
+  const y = H - 12 - 5;
+  drawBar(14, y, 90, 12, hungerGirl, 'berry');
+  drawBar(W - 90 - 14, y, 90, 12, hungerBoy, 'apple');
 }
 
 let last = performance.now();
@@ -435,10 +639,34 @@ let girlJumpAt = 0;
 let night = false;
 let lights = false;
 let twinkleT = 0;
+let cycleT = 0;
+let autoLights = true;
+let nightness = 0;
+const CYCLE_PERIOD = 30;
+let hungerBoy = 100;
+let hungerGirl = 100;
+let stopped = false;
+let cryTimer = 0;
+const tears = [];
+let puddle = 0;
+const BOY_DECAY = 5;
+const GIRL_DECAY = 10;
+const foods = [];
+const sparks = [];
+let foodTimer = 1.5;
+let gameT = 0;
+let msg = null;
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyN') night = !night;
-  if (e.code === 'KeyL') lights = !lights;
+  if (e.code === 'KeyN') {
+    night = !night;
+    cycleT = 0;
+    autoLights = true;
+  }
+  if (e.code === 'KeyL') {
+    lights = !lights;
+    autoLights = false;
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     if (grounded) {
@@ -446,7 +674,7 @@ window.addEventListener('keydown', (e) => {
       vy = -360;
       if (girlGrounded && !girlJumpPending) {
         girlJumpPending = true;
-        girlJumpAt = girlT + 0.15;
+        girlJumpAt = gameT + 0.15;
       }
     }
   }
@@ -457,30 +685,148 @@ function frame(now) {
   last = now;
 
   twinkleT += dt;
+  gameT += dt;
 
-  scroll += 80 * dt;
-  wheelA += 80 * dt / R;
-
-  girlT += dt;
-  girlOff = 105 + 30 * Math.sin(girlT * 0.5);
-  girlWheelA += (80 - 15 * Math.cos(girlT * 0.5)) / R * dt;
-
-  girlDustT += dt;
-  if (girlDustT > 0.15) {
-    girlDustT = 0;
-    dust.push({
-      x: BX - girlOff - 8 + Math.random() * 6,
-      y: 196,
-      vx: -15 - Math.random() * 20,
-      vy: -10 - Math.random() * 15,
-      life: 0.4
-    });
+  cycleT += dt;
+  if (cycleT >= CYCLE_PERIOD) {
+    cycleT -= CYCLE_PERIOD;
+    night = !night;
+    autoLights = true;
+  }
+  if (autoLights) {
+    if (!night) lights = false;
+    else lights = cycleT >= 5 && cycleT < CYCLE_PERIOD - 5;
   }
 
-  if (girlJumpPending && girlT >= girlJumpAt) {
+  const dnTarget = night ? 1 : 0;
+  const dnSpeed = 1 / 4.5;
+  if (nightness < dnTarget) nightness = Math.min(dnTarget, nightness + dnSpeed * dt);
+  else nightness = Math.max(dnTarget, nightness - dnSpeed * dt);
+
+  stopped = hungerBoy <= 0 || hungerGirl <= 0;
+
+  if (!stopped) {
+    scroll += 80 * dt;
+    wheelA += 80 * dt / R;
+
+    girlT += dt;
+    girlOff = 105 + 30 * Math.sin(girlT * 0.5);
+    girlWheelA += (80 - 15 * Math.cos(girlT * 0.5)) / R * dt;
+
+    girlDustT += dt;
+    if (girlDustT > 0.15) {
+      girlDustT = 0;
+      dust.push({
+        x: BX - girlOff - 8 + Math.random() * 6,
+        y: 196,
+        vx: -15 - Math.random() * 20,
+        vy: -10 - Math.random() * 15,
+        life: 0.4
+      });
+    }
+
+    for (const c of clouds) c.x -= 8 * dt;
+    while (clouds.length && clouds[0].x < -70) clouds.shift();
+    let lastC = clouds[clouds.length - 1];
+    while (lastC.x < W + 60) {
+      const nx = lastC.x + 90 + Math.random() * 90;
+      clouds.push({ x: nx, y: 26 + Math.floor(Math.random() * 44), s: 2 });
+      lastC = clouds[clouds.length - 1];
+    }
+
+    for (const s of speckles) {
+      s.x -= 80 * dt;
+      if (s.x < -20) s.x += W + 40;
+    }
+
+    updateTrees(back, dt);
+    updateTrees(mid, dt);
+    updateTrees(front, dt);
+
+    dustT += dt;
+    if (dustT > 0.09) {
+      dustT = 0;
+      dust.push({
+        x: BX - 10 + Math.random() * 6,
+        y: 196,
+        vx: -20 - Math.random() * 30,
+        vy: -15 - Math.random() * 20,
+        life: 0.5
+      });
+    }
+
+    hungerBoy = Math.max(0, hungerBoy - BOY_DECAY * dt);
+    hungerGirl = Math.max(0, hungerGirl - GIRL_DECAY * dt);
+  }
+
+  if (girlJumpPending && gameT >= girlJumpAt) {
     girlJumpPending = false;
     girlGrounded = false;
     girlVy = -300;
+  }
+
+  foodTimer -= dt;
+  if (foodTimer <= 0) {
+    foodTimer = 1.8 + Math.random() * 1.7;
+    spawnFood();
+  }
+
+  const boyYbF = Math.sin(wheelA * 2) - jumpH;
+  const girlYbF = Math.sin(girlWheelA * 2) - girlJumpH;
+
+  for (let i = foods.length - 1; i >= 0; i--) {
+    const f = foods[i];
+    f.x -= 95 * dt;
+    f.y = f.baseY + Math.sin(gameT * 3 + f.phase) * 3;
+    if (f.x < -40) {
+      foods.splice(i, 1);
+      continue;
+    }
+    const bx = BX + 25, byy = HDY + boyYbF;
+    const gx = BX - girlOff + 25, gyy = HDY + girlYbF;
+    const d1 = Math.hypot(f.x - bx, f.y - byy);
+    const d2 = Math.hypot(f.x - gx, f.y - gyy);
+    let catcher = null;
+    if (d1 < 31 && d2 < 31) catcher = d1 <= d2 ? 'boy' : 'girl';
+    else if (d1 < 31) catcher = 'boy';
+    else if (d2 < 31) catcher = 'girl';
+    if (catcher) {
+      if (catcher === 'girl' && f.name === 'burger') {
+        hungerGirl = 0;
+        msg = { text: 'Я не ем мясо ;(', x: gx, y: HDY - 34, life: 3 };
+      } else {
+        if (catcher === 'boy') hungerBoy = Math.min(100, hungerBoy + 35);
+        else hungerGirl = Math.min(100, hungerGirl + 35);
+        if (hungerGirl > 0) {
+          tears.length = 0;
+          puddle = 0;
+        }
+        for (let k = 0; k < 8; k++) {
+          sparks.push({
+            x: f.x, y: f.y,
+            vx: -20 + Math.random() * 40,
+            vy: -40 - Math.random() * 20,
+            life: 0.4,
+            c: k % 2 ? '#ffd43b' : '#fff7c0'
+          });
+        }
+      }
+      foods.splice(i, 1);
+    }
+  }
+
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.vy += 300 * dt;
+    s.life -= dt;
+    if (s.life <= 0) sparks.splice(i, 1);
+  }
+
+  if (msg) {
+    msg.life -= dt;
+    if (msg.life <= 0) msg = null;
   }
 
   if (!girlGrounded) {
@@ -490,14 +836,16 @@ function frame(now) {
       girlJumpH = 0;
       girlVy = 0;
       girlGrounded = true;
-      for (let i = 0; i < 4; i++) {
-        dust.push({
-          x: BX - girlOff + Math.random() * 40 - 10,
-          y: 198,
-          vx: -10 - Math.random() * 20,
-          vy: -30 - Math.random() * 25,
-          life: 0.4
-        });
+      if (!stopped) {
+        for (let i = 0; i < 4; i++) {
+          dust.push({
+            x: BX - girlOff + Math.random() * 40 - 10,
+            y: 198,
+            vx: -10 - Math.random() * 20,
+            vy: -30 - Math.random() * 25,
+            life: 0.4
+          });
+        }
       }
     }
   }
@@ -509,47 +857,20 @@ function frame(now) {
       jumpH = 0;
       vy = 0;
       grounded = true;
-      for (let i = 0; i < 5; i++) {
-        dust.push({
-          x: BX + Math.random() * 40 - 10,
-          y: 198,
-          vx: -10 - Math.random() * 20,
-          vy: -30 - Math.random() * 25,
-          life: 0.4
-        });
+      if (!stopped) {
+        for (let i = 0; i < 5; i++) {
+          dust.push({
+            x: BX + Math.random() * 40 - 10,
+            y: 198,
+            vx: -10 - Math.random() * 20,
+            vy: -30 - Math.random() * 25,
+            life: 0.4
+          });
+        }
       }
     }
   }
 
-  for (const c of clouds) c.x -= 8 * dt;
-  while (clouds.length && clouds[0].x < -70) clouds.shift();
-  let lastC = clouds[clouds.length - 1];
-  while (lastC.x < W + 60) {
-    const nx = lastC.x + 90 + Math.random() * 90;
-    clouds.push({ x: nx, y: 26 + Math.floor(Math.random() * 44), s: 2 });
-    lastC = clouds[clouds.length - 1];
-  }
-
-  for (const s of speckles) {
-    s.x -= 80 * dt;
-    if (s.x < -20) s.x += W + 40;
-  }
-
-  updateTrees(back, dt);
-  updateTrees(mid, dt);
-  updateTrees(front, dt);
-
-  dustT += dt;
-  if (dustT > 0.09) {
-    dustT = 0;
-    dust.push({
-      x: BX - 10 + Math.random() * 6,
-      y: 196,
-      vx: -20 - Math.random() * 30,
-      vy: -15 - Math.random() * 20,
-      life: 0.5
-    });
-  }
   for (let i = dust.length - 1; i >= 0; i--) {
     const d = dust[i];
     d.x += d.vx * dt;
@@ -557,6 +878,37 @@ function frame(now) {
     d.life -= dt;
     if (d.life <= 0) dust.splice(i, 1);
   }
+
+  const girlCrying = hungerGirl <= 0;
+
+  if (girlCrying) {
+    cryTimer -= dt;
+    if (cryTimer <= 0) {
+      cryTimer = 0.22;
+      tears.push({
+        x: BX - girlOff + 30 + Math.random() * 2,
+        y: HDY + Math.sin(girlWheelA * 2) - girlJumpH + 2,
+        vx: 0.5 + Math.random(),
+        vy: 0,
+        life: 1.4
+      });
+    }
+    for (let i = tears.length - 1; i >= 0; i--) {
+      const t = tears[i];
+      t.vy += 160 * dt;
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      t.life -= dt;
+      if (t.y >= 204) {
+        puddle = Math.min(1, puddle + 0.02);
+        tears.splice(i, 1);
+      } else if (t.life <= 0) {
+        tears.splice(i, 1);
+      }
+    }
+  }
+
+  girlOpts.cry = girlCrying;
 
   drawScene();
   requestAnimationFrame(frame);
