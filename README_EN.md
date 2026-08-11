@@ -16,7 +16,7 @@ A pixel-art game about two cyclists overcoming the hardships of the road.
 
 ## Day and night
 
-- The day/night cycle changes automatically every 30 seconds (with a smooth transition).
+- The day/night cycle changes automatically every 30 seconds.
 - At night the cyclists automatically turn on their lights.
 - **N** — toggle day/night manually.
 - **L** — toggle the lights manually.
